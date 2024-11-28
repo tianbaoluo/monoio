@@ -1,9 +1,11 @@
+mod latency_stat;
+
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use std::task::Poll::Pending;
 use std::time::Duration;
 use diatomic_waker::WakeSink;
 use minstant::{Atomic, Instant};
+use crate::latency_stat::{LatencyData, LatencyStat};
 
 const ROUND: usize = 10000;
 
@@ -28,8 +30,7 @@ fn main() {
       .build()
       .unwrap();
     rt.block_on(async move {
-      let mut total_latency_us = 0;
-      let mut num = 0;
+      let mut latency_stat = LatencyStat::with_max(10_000);
       for _ in 0..ROUND {
         let latency_us = wake_sink.wait_until(|| {
           let t = time.swap(Instant::ZERO, Ordering::Relaxed);
@@ -39,10 +40,15 @@ fn main() {
             None
           }
         }).await;
-        total_latency_us += latency_us;
-        num += 1;
-        println!("latency-us: {}\tavg: {}", latency_us, total_latency_us / num);
+        latency_stat.record_latency(latency_us as u64);
+        // total_latency_us += latency_us;
+        // num += 1;
+        // println!("latency-us: {}\tavg: {}", latency_us, total_latency_us / num);
       }
+
+      let mut perf_data = LatencyData::new();
+      latency_stat.evaluate(&mut perf_data);
+      println!("latency: {}", perf_data);
     })
   }).join().unwrap();
 
