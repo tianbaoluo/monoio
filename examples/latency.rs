@@ -5,6 +5,8 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 use diatomic_waker::WakeSink;
 use minstant::{Atomic, Instant};
+use monoio::Runtime;
+use monoio::time::TimeDriver;
 use crate::latency_stat::{LatencyData, LatencyStat};
 
 const ROUND: usize = 10000;
@@ -24,12 +26,7 @@ fn main() {
   });
 
   std::thread::spawn(move || {
-    let mut rt = monoio::RuntimeBuilder::<monoio::FusionDriver>::new()
-      .with_entries(256)
-      .enable_timer()
-      .build()
-      .unwrap();
-    rt.block_on(async move {
+    rt().block_on(async move {
       let mut latency_stat = LatencyStat::with_max(10_000);
       for _ in 0..ROUND {
         let latency_us = wake_sink.wait_until(|| {
@@ -53,4 +50,26 @@ fn main() {
   }).join().unwrap();
 
   sender.join().unwrap();
+}
+
+#[cfg(target_os = "linux")]
+fn rt() -> Runtime<TimeDriver<monoio::IoUringDriver>> {
+  let mut urb = io_uring::IoUring::builder();
+  urb.setup_sqpoll(200).setup_sqpoll_cpu(3);
+
+  monoio::RuntimeBuilder::<monoio::IoUringDriver>::new()
+    .uring_builder(urb)
+    .with_entries(256)
+    .enable_all()
+    .build()
+    .unwrap()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn rt() -> Runtime<TimeDriver<monoio::LegacyDriver>> {
+  monoio::RuntimeBuilder::<monoio::LegacyDriver>::new()
+    .with_entries(256)
+    .enable_timer()
+    .build()
+    .unwrap()
 }
