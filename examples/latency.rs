@@ -19,7 +19,7 @@ fn main() {
   let send_time = time.clone();
   let sender = std::thread::spawn(move || {
     for _ in 0..ROUND {
-      std::thread::sleep(Duration::from_millis(100));
+      std::thread::sleep(Duration::from_millis(10));
       send_time.store(Instant::now(), Ordering::Relaxed);
       wake_src.notify();
     }

@@ -26,7 +26,7 @@ monoio = { path = "../monoio", default-features = false, features = [
 # tracing-subscriber = "0.3"
 
 # For hyper examples
-hyper = { version = "1.1", features = ["http1", "client", "server"] }
+hyper = { version = "1.5", features = ["http1", "client", "server"] }
 http-body-util = "0.1"
 
 # For h2 examples
@@ -41,11 +41,14 @@ tokio = { version = "1", default-features = false, features = ["io-util"] }
 tower-service = "0.3"
 
 futures = "0.3"
-local-sync = "0.0.5"
+local-sync = "0.1"
 pin-project-lite = "0.2"
 
-diatomic-waker = "0.2.3"
+diatomic-waker = "0.2"
 minstant = {  version = "0.1", features = ["atomic"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+io-uring = "0.7"
 
 [[example]]
 name = "latency"
