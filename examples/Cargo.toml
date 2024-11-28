@@ -44,6 +44,13 @@ futures = "0.3"
 local-sync = "0.0.5"
 pin-project-lite = "0.2"
 
+diatomic-waker = "0.2.3"
+minstant = {  version = "0.1", features = ["atomic"] }
+
+[[example]]
+name = "latency"
+path = "latency.rs"
+
 [[example]]
 name = "accept"
 path = "accept.rs"
