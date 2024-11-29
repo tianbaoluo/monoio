@@ -27,7 +27,7 @@ fn main() {
   });
 
   std::thread::spawn(move || {
-    rt().block_on_single(async move {
+    rt().block_on(async move {
       let mut latency_stat = LatencyStat::with_max(10_000);
       for _ in 0..ROUND {
         let latency_us = wake_sink.wait_until(|| {
