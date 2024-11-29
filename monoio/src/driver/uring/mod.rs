@@ -11,6 +11,7 @@ use std::{
 };
 
 use io_uring::{cqueue, opcode, types::Timespec, IoUring};
+use io_uring::types::SubmitArgs;
 use lifecycle::MaybeFdLifecycle;
 
 use super::{
@@ -399,9 +400,17 @@ impl UringInner {
         Ok(())
     }
 
+    #[inline]
+    fn submit0(&mut self) -> io::Result<usize> {
+        const IORING_ENTER_GETEVENTS: u32 = 1 << 0;
+        let (submitter, squeue, _) = self.uring.split();
+        let to_submit = squeue.len();
+        unsafe { submitter.enter::<libc::sigset_t>(to_submit as u32, 0, IORING_ENTER_GETEVENTS, None) }
+    }
+
     fn submit(&mut self) -> io::Result<()> {
         loop {
-            match self.uring.submit() {
+            match self.submit0() {
                 #[cfg(feature = "unstable")]
                 Err(ref e)
                     if matches!(e.kind(), io::ErrorKind::Other | io::ErrorKind::ResourceBusy) =>

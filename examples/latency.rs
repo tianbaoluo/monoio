@@ -10,6 +10,7 @@ use monoio::time::TimeDriver;
 use crate::latency_stat::{LatencyData, LatencyStat};
 
 const ROUND: usize = 10000;
+const RUN_CPU: u32 = 3;
 
 fn main() {
   let time = Arc::new(Atomic::new(Instant::ZERO));
@@ -19,14 +20,14 @@ fn main() {
   let send_time = time.clone();
   let sender = std::thread::spawn(move || {
     for _ in 0..ROUND {
-      std::thread::sleep(Duration::from_millis(10));
+      std::thread::sleep(Duration::from_millis(5));
       send_time.store(Instant::now(), Ordering::Relaxed);
       wake_src.notify();
     }
   });
 
   std::thread::spawn(move || {
-    rt().block_on(async move {
+    rt().block_on_single(async move {
       let mut latency_stat = LatencyStat::with_max(10_000);
       for _ in 0..ROUND {
         let latency_us = wake_sink.wait_until(|| {
@@ -54,8 +55,9 @@ fn main() {
 
 #[cfg(target_os = "linux")]
 fn rt() -> Runtime<TimeDriver<monoio::IoUringDriver>> {
+  monoio::utils::bind_to_cpu_set(vec![RUN_CPU as usize]).unwrap();
   let mut urb = io_uring::IoUring::builder();
-  urb.setup_sqpoll(200).setup_sqpoll_cpu(3);
+  urb.setup_sqpoll(200).setup_sqpoll_cpu(RUN_CPU);
 
   monoio::RuntimeBuilder::<monoio::IoUringDriver>::new()
     .uring_builder(urb)
