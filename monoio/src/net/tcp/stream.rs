@@ -177,6 +177,64 @@ impl TcpStream {
         Ok(stream)
     }
 
+    pub async fn connect_fd(socket: RawFd, addr: SocketAddr, tcp_fast_open: bool) -> io::Result<Self> {
+        let mut tfo = tcp_fast_open;
+
+        if tfo {
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            super::tfo::try_set_tcp_fastopen_connect(&socket);
+            #[cfg(any(target_os = "ios", target_os = "macos"))]
+            // if we cannot set force tcp fastopen, we will not use it.
+            if super::tfo::set_tcp_fastopen_force_enable(&socket).is_err() {
+                tfo = false;
+            }
+        }
+
+        let completion = Op::connect(SharedFd::new::<false>(socket)?, addr, tfo)?.await;
+        completion.meta.result?;
+
+        let stream = TcpStream::from_shared_fd(completion.data.fd);
+        // wait write ready on epoll branch
+        if crate::driver::op::is_legacy() {
+            #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "legacy"))]
+            if !tfo {
+                stream.writable(true).await?;
+            } else {
+                // set writable as init state
+                crate::driver::CURRENT.with(|inner| match inner {
+                    crate::driver::Inner::Legacy(inner) => {
+                        let idx = stream.fd.registered_index().unwrap();
+                        if let Some(mut readiness) =
+                          unsafe { &mut *inner.get() }.io_dispatch.get(idx)
+                        {
+                            readiness.set_writable();
+                        }
+                    }
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!("should never happens"),
+                })
+            }
+            #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+            stream.writable(true).await?;
+
+            // getsockopt libc::SO_ERROR
+            #[cfg(unix)]
+            let sys_socket = unsafe { std::net::TcpStream::from_raw_fd(stream.fd.raw_fd()) };
+            #[cfg(windows)]
+            let sys_socket =
+              unsafe { std::net::TcpStream::from_raw_socket(stream.fd.raw_socket()) };
+            let err = sys_socket.take_error();
+            #[cfg(unix)]
+            let _ = sys_socket.into_raw_fd();
+            #[cfg(windows)]
+            let _ = sys_socket.into_raw_socket();
+            if let Some(e) = err? {
+                return Err(e);
+            }
+        }
+        Ok(stream)
+    }
+
     /// Return the local address that this stream is bound to.
     #[inline]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {

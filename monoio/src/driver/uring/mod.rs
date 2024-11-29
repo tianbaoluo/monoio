@@ -11,7 +11,6 @@ use std::{
 };
 
 use io_uring::{cqueue, opcode, types::Timespec, IoUring};
-use io_uring::types::SubmitArgs;
 use lifecycle::MaybeFdLifecycle;
 
 use super::{
