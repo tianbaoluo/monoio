@@ -156,9 +156,6 @@ impl<D> Runtime<D> {
                         let mut max_round = self.context.tasks.len() * 2;
                         while let Some(t) = self.context.tasks.pop() {
                             t.run();
-                            if should_submit() {
-                                let _ = self.driver.submit();
-                            }
                             if max_round == 0 {
                                 // maybe there's a looping task
                                 break;
@@ -172,9 +169,6 @@ impl<D> Runtime<D> {
                             // check if ready
                             if let std::task::Poll::Ready(t) = join.as_mut().poll(cx) {
                                 return t;
-                            }
-                            if should_submit() {
-                                let _ = self.driver.submit();
                             }
                         }
 
@@ -386,24 +380,6 @@ where
         ctx.tasks.push(task);
     });
     join
-}
-
-#[cfg(feature = "unstable")]
-#[thread_local]
-static SHOULD_SUBMIT: Cell<bool> = Cell::new(false);
-
-#[cfg(not(feature = "unstable"))]
-thread_local! {
-    static SHOULD_SUBMIT: Cell<bool> = const { Cell::new(false) };
-}
-
-#[inline]
-fn should_submit() -> bool {
-    SHOULD_SUBMIT.replace(false)
-}
-
-pub fn submit_now() {
-    SHOULD_SUBMIT.set(true);
 }
 
 #[cfg(feature = "sync")]
