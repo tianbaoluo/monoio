@@ -1,4 +1,3 @@
-use std::cell::Cell;
 use std::future::Future;
 
 #[cfg(any(all(target_os = "linux", feature = "iouring"), feature = "legacy"))]
@@ -158,7 +157,7 @@ impl<D> Runtime<D> {
                         while let Some(t) = self.context.tasks.pop() {
                             t.run();
                             if should_submit() {
-                                break;
+                                let _ = self.driver.submit();
                             }
                             if max_round == 0 {
                                 // maybe there's a looping task
@@ -174,6 +173,9 @@ impl<D> Runtime<D> {
                             if let std::task::Poll::Ready(t) = join.as_mut().poll(cx) {
                                 return t;
                             }
+                            if should_submit() {
+                                let _ = self.driver.submit();
+                            }
                         }
 
                         if self.context.tasks.is_empty() {
@@ -185,52 +187,6 @@ impl<D> Runtime<D> {
                         // Cold path
                         let _ = self.driver.submit();
                     }
-
-                    // Wait and Process CQ(the error is ignored for not debug mode)
-                    #[cfg(not(all(debug_assertions, feature = "debug")))]
-                    let _ = self.driver.park();
-
-                    #[cfg(all(debug_assertions, feature = "debug"))]
-                    if let Err(e) = self.driver.park() {
-                        trace!("park error: {:?}", e);
-                    }
-                }
-            })
-        })
-    }
-
-    pub fn block_on_single<F>(&mut self, future: F) -> F::Output
-    where
-      F: Future,
-      D: Driver,
-    {
-        assert!(
-            !CURRENT.is_set(),
-            "Can not start a runtime inside a runtime"
-        );
-
-        let waker = dummy_waker();
-        let cx = &mut std::task::Context::from_waker(&waker);
-
-        self.driver.with(|| {
-            CURRENT.set(&self.context, || {
-                #[cfg(feature = "sync")]
-                let join = unsafe { spawn_without_static(future) };
-                #[cfg(not(feature = "sync"))]
-                let join = future;
-
-                let mut join = std::pin::pin!(join);
-                set_poll();
-                loop {
-                    // Check main future
-                    while should_poll() {
-                        // check if ready
-                        if let std::task::Poll::Ready(t) = join.as_mut().poll(cx) {
-                            return t;
-                        }
-                    }
-                    let _ = self.driver.submit();
-
 
                     // Wait and Process CQ(the error is ignored for not debug mode)
                     #[cfg(not(all(debug_assertions, feature = "debug")))]
