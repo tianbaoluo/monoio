@@ -305,7 +305,7 @@ impl IoUringDriver {
                 const IORING_ENTER_GETEVENTS: u32 = 1 << 0;
                 let (submitter, squeue, _) = inner.uring.split();
                 let to_submit = squeue.len();
-                unsafe { submitter.enter::<libc::sigset_t>(to_submit as u32, 1, IORING_ENTER_GETEVENTS, None)?; }
+                unsafe { submitter.enter::<libc::sigset_t>(to_submit as u32, 0, IORING_ENTER_GETEVENTS, None)?; }
             }
         } else {
             // Submit only
