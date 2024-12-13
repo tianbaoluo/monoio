@@ -32,6 +32,8 @@ pub mod io;
 pub mod net;
 pub mod task;
 pub mod utils;
+#[cfg(target_os = "linux")]
+pub mod event;
 
 use std::future::Future;
 
