@@ -1,4 +1,4 @@
-use std::os::fd::AsRawFd;
+use std::os::unix::prelude::{AsRawFd, RawFd};
 use crate::driver::shared_fd::SharedFd;
 
 pub(crate) struct EventFd {
@@ -15,7 +15,7 @@ impl EventFd {
       use std::os::unix::io::FromRawFd;
       std::fs::File::from_raw_fd(fd)
     };
-    Ok(EventWaker {
+    Ok(EventFd {
       raw: fd,
       _file: file,
     })
