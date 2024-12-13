@@ -1,7 +1,7 @@
 use std::os::unix::prelude::{AsRawFd, RawFd};
 use crate::driver::shared_fd::SharedFd;
 
-pub(crate) struct EventFd {
+pub struct EventFd {
   // RawFd
   raw: RawFd,
   // File hold the ownership of fd, only useful when drop
