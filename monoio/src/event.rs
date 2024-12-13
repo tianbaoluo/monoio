@@ -32,8 +32,12 @@ impl EventFd {
     }
   }
 
-  pub fn file(&self) -> std::io::Result<crate::fs::File> {
-    let share_fd = SharedFd::new::<false>(self.raw)?;
-    Ok(crate::fs::File::from_shared_fd(share_fd))
+  pub fn raw_fd(&self) -> RawFd {
+    self.raw
   }
+}
+
+pub fn file(raw_fd: RawFd) -> std::io::Result<crate::fs::File> {
+  let share_fd = SharedFd::new::<false>(raw_fd)?;
+  Ok(crate::fs::File::from_shared_fd(share_fd))
 }
