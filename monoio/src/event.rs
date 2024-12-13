@@ -33,7 +33,7 @@ impl EventFd {
   }
 
   pub fn file(&self) -> std::io::Result<crate::fs::File> {
-    let share_fd = SharedFd::new(self.raw)?;
+    let share_fd = SharedFd::new::<false>(self.raw)?;
     Ok(crate::fs::File::from_shared_fd(share_fd))
   }
 }
