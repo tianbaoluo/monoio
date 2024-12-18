@@ -301,11 +301,7 @@ impl IoUringDriver {
                 }
             } else {
                 // Submit and Wait without timeout
-                // inner.uring.submit_and_wait(1)?;
-                const IORING_ENTER_GETEVENTS: u32 = 1 << 0;
-                let (submitter, squeue, _) = inner.uring.split();
-                let to_submit = squeue.len();
-                unsafe { submitter.enter::<libc::sigset_t>(to_submit as u32, 1, IORING_ENTER_GETEVENTS, None)?; }
+                inner.uring.submit_and_wait(1)?;
             }
         } else {
             // Submit only
@@ -403,17 +399,9 @@ impl UringInner {
         Ok(())
     }
 
-    #[inline]
-    fn submit0(&mut self) -> io::Result<usize> {
-        const IORING_ENTER_GETEVENTS: u32 = 1 << 0;
-        let (submitter, squeue, _) = self.uring.split();
-        let to_submit = squeue.len();
-        unsafe { submitter.enter::<libc::sigset_t>(to_submit as u32, 0, IORING_ENTER_GETEVENTS, None) }
-    }
-
     fn submit(&mut self) -> io::Result<()> {
         loop {
-            match self.submit0() {
+            match self.uring.submit() {
                 #[cfg(feature = "unstable")]
                 Err(ref e)
                     if matches!(e.kind(), io::ErrorKind::Other | io::ErrorKind::ResourceBusy) =>
