@@ -16,6 +16,7 @@ use crate::{
     },
     time::driver::Handle as TimeHandle,
 };
+use crate::scheduler::SubLocalScheduler;
 
 #[cfg(feature = "sync")]
 thread_local! {
@@ -23,7 +24,8 @@ thread_local! {
         thread_id: crate::utils::thread_id::DEFAULT_THREAD_ID,
         unpark_cache: std::cell::RefCell::new(fxhash::FxHashMap::default()),
         waker_sender_cache: std::cell::RefCell::new(fxhash::FxHashMap::default()),
-        tasks: Default::default(),
+        tasks: TaskQueue::default(),
+        sub_tasks: TaskQueue::default(),
         time_handle: None,
         blocking_handle: crate::blocking::BlockingHandle::Empty(crate::blocking::BlockingStrategy::Panic),
     };
@@ -33,7 +35,8 @@ scoped_thread_local!(pub(crate) static CURRENT: Context);
 
 pub(crate) struct Context {
     /// Owned task set and local run queue
-    pub(crate) tasks: TaskQueue,
+    pub(crate) tasks: TaskQueue<LocalScheduler>,
+    pub(crate) sub_tasks: TaskQueue<SubLocalScheduler>,
 
     /// Thread id(not the kernel thread id but a generated unique number)
     pub(crate) thread_id: usize,
@@ -66,6 +69,7 @@ impl Context {
             unpark_cache: std::cell::RefCell::new(fxhash::FxHashMap::default()),
             waker_sender_cache: std::cell::RefCell::new(fxhash::FxHashMap::default()),
             tasks: TaskQueue::default(),
+            sub_tasks: TaskQueue::default(),
             time_handle: None,
             blocking_handle,
         }
@@ -78,6 +82,7 @@ impl Context {
         Self {
             thread_id,
             tasks: TaskQueue::default(),
+            sub_tasks: TaskQueue::default(),
             time_handle: None,
         }
     }
@@ -155,6 +160,21 @@ impl<D> Runtime<D> {
                         // Consume all tasks(with max round to prevent io starvation)
                         let mut max_round = self.context.tasks.len() * 2;
                         while let Some(t) = self.context.tasks.pop() {
+                            t.run();
+                            if max_round == 0 {
+                                // maybe there's a looping task
+                                break;
+                            } else {
+                                max_round -= 1;
+                            }
+                        }
+
+                        // Consume all sub-tasks(with max round to prevent io starvation)
+                        // if self.context.sub_tasks.len() > 0 {
+                        //     println!("#sub={}", self.context.sub_tasks.len());
+                        // }
+                        let mut max_round = self.context.sub_tasks.len() * 2;
+                        while let Some(t) = self.context.sub_tasks.pop() {
                             t.run();
                             if max_round == 0 {
                                 // maybe there's a looping task
@@ -380,6 +400,38 @@ where
         ctx.tasks.push(task);
     });
     join
+}
+
+pub fn spawn_sub<T>(future: T) -> JoinHandle<T::Output>
+where
+  T: Future + 'static,
+  T::Output: 'static,
+{
+    let (task, join) = new_task(
+        crate::utils::thread_id::get_current_thread_id(),
+        future,
+        SubLocalScheduler,
+    );
+
+    CURRENT.with(|ctx| {
+        ctx.sub_tasks.push(task);
+    });
+    join
+}
+
+#[derive(Debug, Clone)]
+pub struct TaskMetric {
+    num_tasks: usize,
+    num_sub_tasks: usize,
+}
+
+pub fn task_metric() -> TaskMetric {
+    CURRENT.with(|ctx| {
+        TaskMetric {
+            num_tasks: ctx.tasks.len(),
+            num_sub_tasks: ctx.sub_tasks.len(),
+        }
+    })
 }
 
 #[cfg(feature = "sync")]
