@@ -9,7 +9,7 @@ use monoio::Runtime;
 use monoio::time::TimeDriver;
 use crate::latency_stat::{LatencyData, LatencyStat};
 
-const ROUND: usize = 10000;
+const ROUND: usize = 100_000;
 const RUN_CPU: u32 = 3;
 
 fn main() {
