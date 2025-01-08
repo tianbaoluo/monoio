@@ -192,7 +192,7 @@ impl<D> Runtime<D> {
                             }
                         }
 
-                        if self.context.tasks.is_empty() {
+                        if self.context.tasks.is_empty() || self.context.sub_tasks.is_empty() {
                             // No task to execute, we should wait for io blockingly
                             // Hot path
                             break;
