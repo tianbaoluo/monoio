@@ -41,7 +41,7 @@ pub(crate) struct LegacyInner {
 
     // Waker receiver
     #[cfg(feature = "sync")]
-    waker_receiver: flume::Receiver<std::task::Waker>,
+    waker_receiver: crossbeam_channel::Receiver<std::task::Waker>,
 }
 
 /// Driver with Poll-like syscall.
@@ -82,7 +82,7 @@ impl LegacyDriver {
             TOKEN_WAKEUP,
         )?));
         #[cfg(feature = "sync")]
-        let (waker_sender, waker_receiver) = flume::unbounded::<std::task::Waker>();
+        let (waker_sender, waker_receiver) = crossbeam_channel::unbounded::<std::task::Waker>();
         #[cfg(feature = "sync")]
         let thread_id = crate::builder::BUILD_THREAD_ID.with(|id| *id);
 

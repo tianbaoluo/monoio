@@ -2,7 +2,7 @@
 use std::sync::LazyLock;
 use std::{sync::Mutex, task::Waker};
 
-use flume::Sender;
+use crossbeam_channel::Sender;
 use fxhash::FxHashMap;
 #[cfg(not(feature = "unstable"))]
 use once_cell::sync::Lazy as LazyLock;

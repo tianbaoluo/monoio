@@ -22,7 +22,8 @@ socket2 = { version = "0.5", features = ["all"] }
 memchr = "2.7"
 
 bytes = { version = "1", optional = true }
-flume = { version = "0.11", optional = true }
+#flume = { version = "0.11", optional = true }
+crossbeam-channel = { version = "0.5", optional = true }
 mio = { version = "1.0", features = [
     "net",
     "os-poll",
@@ -82,7 +83,7 @@ symlinkat = []
 # enable `async main` macros support
 macros = ["monoio-macros"]
 # allow waker to be sent across threads
-sync = ["flume", "threadpool", "once_cell"]
+sync = ["crossbeam-channel", "threadpool", "once_cell"]
 # enable bind cpu set
 utils = ["nix"]
 # enable debug if you want to know what runtime does
@@ -99,7 +100,7 @@ poll-io = ["tokio", "mio"]
 signal = ["ctrlc", "sync"]
 signal-termination = ["signal", "ctrlc/termination"]
 # by default both iouring and legacy are enabled
-default = ["async-cancel", "bytes", "iouring", "legacy", "macros", "utils"]
+default = ["async-cancel", "bytes", "iouring", "legacy", "macros", "utils", "sync"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(loom)'] }

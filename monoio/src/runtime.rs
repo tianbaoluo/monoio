@@ -46,7 +46,7 @@ pub(crate) struct Context {
     /// Waker sender cache
     #[cfg(feature = "sync")]
     pub(crate) waker_sender_cache:
-        std::cell::RefCell<fxhash::FxHashMap<usize, flume::Sender<std::task::Waker>>>,
+        std::cell::RefCell<fxhash::FxHashMap<usize, crossbeam_channel::Sender<std::task::Waker>>>,
 
     /// Time Handle
     pub(crate) time_handle: Option<TimeHandle>,
