@@ -78,7 +78,7 @@ pub(crate) struct UringInner {
 
     // Waker receiver
     #[cfg(feature = "sync")]
-    waker_receiver: flume::Receiver<std::task::Waker>,
+    waker_receiver: crossbeam_channel::Receiver<std::task::Waker>,
 
     // Uring support ext_arg
     ext_arg: bool,
@@ -136,7 +136,7 @@ impl IoUringDriver {
             }
         };
 
-        let (waker_sender, waker_receiver) = flume::unbounded::<std::task::Waker>();
+        let (waker_sender, waker_receiver) = crossbeam_channel::unbounded::<std::task::Waker>();
 
         let inner = Rc::new(UnsafeCell::new(UringInner {
             #[cfg(feature = "poll-io")]
