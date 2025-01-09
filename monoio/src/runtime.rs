@@ -382,6 +382,11 @@ where
     join
 }
 
+#[inline]
+pub fn num_tasks() -> usize {
+    CURRENT.with(|ctx| { ctx.tasks.len() })
+}
+
 #[cfg(feature = "sync")]
 unsafe fn spawn_without_static<T>(future: T) -> JoinHandle<T::Output>
 where
