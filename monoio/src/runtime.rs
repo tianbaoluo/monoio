@@ -1,5 +1,5 @@
 use std::future::Future;
-
+use std::os::fd::RawFd;
 #[cfg(any(all(target_os = "linux", feature = "iouring"), feature = "legacy"))]
 use crate::time::TimeDriver;
 #[cfg(all(target_os = "linux", feature = "iouring"))]
@@ -385,6 +385,15 @@ where
 #[inline]
 pub fn num_tasks() -> usize {
     CURRENT.with(|ctx| { ctx.tasks.len() })
+}
+
+pub fn ring_fd() -> Option<RawFd> {
+    let ring_fd = crate::driver::CURR_RING_FD.get();
+    if ring_fd == -1 {
+        None
+    } else {
+        Some(ring_fd)
+    }
 }
 
 #[cfg(feature = "sync")]

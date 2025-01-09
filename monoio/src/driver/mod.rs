@@ -24,7 +24,8 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-
+use std::cell::Cell;
+use std::os::fd::RawFd;
 #[allow(unreachable_pub)]
 #[cfg(feature = "legacy")]
 pub use self::legacy::LegacyDriver;
@@ -35,6 +36,10 @@ use self::op::{CompletionMeta, Op, OpAble};
 pub use self::uring::IoUringDriver;
 #[cfg(all(target_os = "linux", feature = "iouring"))]
 use self::uring::UringInner;
+
+thread_local! {
+  pub(crate) static CURR_RING_FD: Cell<RawFd> = Cell::new(-1);
+}
 
 /// Unpark a runtime of another thread.
 pub(crate) mod unpark {

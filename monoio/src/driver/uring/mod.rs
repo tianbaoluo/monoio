@@ -103,6 +103,7 @@ impl IoUringDriver {
         entries: u32,
     ) -> io::Result<IoUringDriver> {
         let uring = ManuallyDrop::new(urb.build(entries)?);
+        crate::driver::CURR_RING_FD.set(uring.as_raw_fd());
 
         let inner = Rc::new(UnsafeCell::new(UringInner {
             #[cfg(feature = "poll-io")]
@@ -126,6 +127,7 @@ impl IoUringDriver {
         entries: u32,
     ) -> io::Result<IoUringDriver> {
         let uring = ManuallyDrop::new(urb.build(entries)?);
+        crate::driver::CURR_RING_FD.set(uring.as_raw_fd());
 
         // Create eventfd and register it to the ring.
         let waker = {
